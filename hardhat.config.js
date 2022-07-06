@@ -7,10 +7,36 @@ require("./tasks/faucet");
 
 // If you are using MetaMask, be sure to change the chainId to 1337
 module.exports = {
-  solidity: "0.7.3",
+  solidity: {
+    compilers: [
+      {
+        version: "0.8.1",
+      },
+      {
+        version: "0.8.0",
+      },
+    ],
+  },
+  settings: {
+    optimizer: {
+      enabled: true,
+      runs: 200,
+    },
+  },
   networks: {
-    hardhat: {
-      chainId: 31337
-    }
-  }
+    local: {
+      chainId: 31337,
+      url: "http://localhost:8545",
+    },
+    prod: {
+      url: "https://polygon-rpc.com",
+      chainId: 137,
+      accounts: ["INSRT MAINNET PRIVATE KEY"],
+    },
+    dev: {
+      url: "https://rpc-mumbai.maticvigil.com/",
+      chainId: 80001,
+      accounts: ["INSERT TESTNET PRIVTE KEY"],
+    },
+  },
 };
