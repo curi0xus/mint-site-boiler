@@ -1,73 +1,70 @@
 //SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
 
-// Solidity files have to start with this pragma.
-// It will be used by the Solidity compiler to validate its version.
-pragma solidity ^0.7.0;
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "./ERC2981ContractWideRoyalties.sol";
 
-// We import this library to be able to use console.log
-import "hardhat/console.sol";
+contract Token is ERC721URIStorage, Ownable, ERC2981ContractWideRoyalties {
+    string public baseURI;
+    uint256 public circulatingSupply = 0;
+    uint256 public startTime;
+    bool public paused;
 
-
-// This is the main building block for smart contracts.
-contract Token {
-    // Some string type variables to identify the token.
-    string public name = "My Hardhat Token";
-    string public symbol = "MHT";
-
-    // The fixed amount of tokens stored in an unsigned integer type variable.
-    uint256 public totalSupply = 1000000;
-
-    // An address type variable is used to store ethereum accounts.
-    address public owner;
-
-    // A mapping is a key/value map. Here we store each account balance.
-    mapping(address => uint256) balances;
-
-    /**
-     * Contract initialization.
-     *
-     * The `constructor` is executed only once when the contract is created.
-     * The `public` modifier makes a function callable from outside the contract.
-     */
-    constructor() {
-        // The totalSupply is assigned to transaction sender, which is the account
-        // that is deploying the contract.
-        balances[msg.sender] = totalSupply;
-        owner = msg.sender;
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        string memory _baseUri,
+        uint256 _startTime
+    ) ERC721(_name, _symbol) {
+        baseURI = _baseUri;
+        startTime = _startTime;
     }
 
-    /**
-     * A function to transfer tokens.
-     *
-     * The `external` modifier makes a function *only* callable from outside
-     * the contract.
-     */
-    function transfer(address to, uint256 amount) external {
-        // Check if the transaction sender has enough tokens.
-        // If `require`'s first argument evaluates to `false` then the
-        // transaction will revert.
-        require(balances[msg.sender] >= amount, "Not enough tokens");
-
-        // We can print messages and values using console.log
-        console.log(
-            "Transferring from %s to %s %s tokens",
-            msg.sender,
-            to,
-            amount
-        );
-
-        // Transfer the amount.
-        balances[msg.sender] -= amount;
-        balances[to] += amount;
+    /// @inheritdoc	ERC165
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC721, ERC2981Base)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
     }
 
-    /**
-     * Read only function to retrieve the token balance of a given account.
-     *
-     * The `view` modifier indicates that it doesn't modify the contract's
-     * state, which allows us to call it without executing a transaction.
-     */
-    function balanceOf(address account) external view returns (uint256) {
-        return balances[account];
+    /// @notice Allows to set the royalties on the contract
+    /// @dev This function in a real contract should be protected with a onlyOwner (or equivalent) modifier
+    /// @param recipient the royalties recipient
+    /// @param value royalties value (between 0 and 10000)
+    function setRoyalties(address recipient, uint256 value) public {
+        _setRoyalties(recipient, value);
+    }
+
+    function mint() external {
+        require(block.timestamp >= startTime, "Minting has not start");
+        require(paused == false, "Contract Paused");
+        require(balanceOf(msg.sender) == 0, "You have already minted");
+        _mint(msg.sender, circulatingSupply);
+        circulatingSupply++;
+    }
+
+    function setPause(bool _paused) public onlyOwner {
+        paused = _paused;
+    }
+
+    function setTokenURI(uint256 tokenId, string memory tokenURI)
+        external
+        onlyOwner
+    {
+        _setTokenURI(tokenId, tokenURI);
+    }
+
+    function setBaseURI(string memory baseURI_) external onlyOwner {
+        baseURI = baseURI_;
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
     }
 }
